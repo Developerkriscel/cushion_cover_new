@@ -77,8 +77,17 @@ async function ensureCustomerColumns() {
 
 export async function POST(req: Request) {
   try {
-    if (req.headers.get("origin") !== new URL(req.url).origin)
-      return json({ error: "Request not allowed" }, 403);
+    const origin = req.headers.get("origin");
+    if (origin) {
+      try {
+        const originHost = new URL(origin).host;
+        const reqHost = new URL(req.url).host;
+        const hostHeader = req.headers.get("host") || req.headers.get("x-forwarded-host") || "";
+        if (originHost !== reqHost && (!hostHeader || !origin.includes(hostHeader.split(":")[0]))) {
+          return json({ error: "Request not allowed" }, 403);
+        }
+      } catch {}
+    }
 
     const uid = await user(req);
     if (!uid || !uid.startsWith("customer:"))

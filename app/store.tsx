@@ -176,7 +176,7 @@ export default function Store({
   const [couponsList, setCouponsList] = useState<any[]>([]);
   const [trackingOrder, setTrackingOrder] = useState<string | null>(null);
   const [checkoutAddress, setCheckoutAddress] = useState<Address | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("cashfree");
+  const [paymentMethod, setPaymentMethod] = useState("cod");
   const dialog = useRef<HTMLDialogElement>(null),
     detail = useRef<HTMLDialogElement>(null),
     loginDialogRef = useRef<HTMLDialogElement>(null),
@@ -204,10 +204,22 @@ export default function Store({
       setOrders(d.orders || []);
       setAddresses(d.addresses || []);
       setCouponsList(d.coupons || []);
+      if (d.addresses?.length) {
+        const def = d.addresses.find((a: any) => a.isDefault) || d.addresses[0];
+        if (def) setCheckoutAddress((prev: Address | null) => prev || def);
+      }
+      try {
+        if (sessionStorage.getItem("velto_pending_checkout") === "1") {
+          sessionStorage.removeItem("velto_pending_checkout");
+          setDrawer(true);
+          setCheckout(true);
+        }
+      } catch {}
     } else {
       setCustomer(null);
       setOrders([]);
       setAddresses([]);
+      setCheckoutAddress(null);
     }
     if (!fromCache) setStateLoaded(true);
   }
@@ -381,12 +393,18 @@ export default function Store({
     addresses.find((address: Address) => address.isDefault) || addresses[0] || null;
   function beginCheckout(nextBag?: Record<string, number>) {
     if (!customer) {
+      try {
+        sessionStorage.setItem("velto_pending_checkout", "1");
+      } catch {}
       setLoginDrawer(true);
       setToast("Please log in to continue checkout.");
       return;
     }
     if (nextBag) setBag(nextBag);
-    setCheckoutAddress(defaultAddress);
+    if (!checkoutAddress) {
+      const def = addresses.find((address: Address) => address.isDefault) || addresses[0] || null;
+      if (def) setCheckoutAddress(def);
+    }
     setCheckout(true);
     setError("");
   }
@@ -570,9 +588,12 @@ export default function Store({
     }
     setBusy(true);
     setError("");
-    const f = Object.fromEntries(new FormData(e.currentTarget));
+    const fullAddress = `${checkoutAddress.line1}${checkoutAddress.line2 ? ", " + checkoutAddress.line2 : ""}, ${checkoutAddress.city}, ${checkoutAddress.state}, ${checkoutAddress.country}`;
     const body = {
-      ...f,
+      name: checkoutAddress.fullName,
+      phone: checkoutAddress.phone,
+      address: fullAddress,
+      pincode: checkoutAddress.pincode,
       items: cart.map((p) => ({ id: p.id, qty: bag[p.id] })),
       coupon,
       paymentMethod,
