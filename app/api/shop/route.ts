@@ -50,7 +50,7 @@ async function ensureCustomerColumns() {
   ]) {
     try {
       await db.prepare(statement).run();
-    } catch {}
+    } catch (e) {}
   }
 }
 
@@ -62,7 +62,7 @@ async function ensureOrderColumns() {
   ]) {
     try {
       await E().DB.prepare(statement).run();
-    } catch {}
+    } catch (e) {}
   }
 }
 
@@ -146,9 +146,9 @@ export async function GET(req: Request) {
       200,
       uid ? {} : { "Set-Cookie": await guestCookie() },
     );
-  } catch {
+  } catch (e) {
     return json(
-      { error: "The store is temporarily unavailable. Please try again." },
+      { error: "The store is temporarily unavailable. " },
       503,
     );
   }
@@ -350,7 +350,7 @@ export async function POST(req: Request) {
       let url: URL;
       try {
         url = new URL(s.siteUrl);
-      } catch {
+      } catch (e) {
         return json({ error: "Enter a valid HTTPS website URL." }, 400);
       }
 
@@ -614,7 +614,7 @@ export async function POST(req: Request) {
     }
 
     return json({ error: "Unknown action" }, 400);
-  } catch {
+  } catch (e) {
     return json({ error: "Could not save your changes. Please try again." }, 503);
   }
 }
