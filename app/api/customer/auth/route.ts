@@ -227,13 +227,34 @@ function customerCookie(email: string, exp: string, sig: string) {
 
 export async function POST(req: Request) {
   try {
-    if (req.headers.get("origin") !== new URL(req.url).origin)
-      return json({ error: "Request not allowed" }, 403);
-
     const raw = await req.text();
     if (raw.length > 50000) return json({ error: "Request too large" }, 413);
 
     const body = JSON.parse(raw);
+
+    if (body.action === "customerLogout") {
+      return json(
+        { ok: true },
+        200,
+        {
+          "Set-Cookie":
+            "velto_customer=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax",
+        },
+      );
+    }
+
+    const origin = req.headers.get("origin");
+    if (origin) {
+      try {
+        const originHost = new URL(origin).host;
+        const reqHost = new URL(req.url).host;
+        const hostHeader = req.headers.get("host") || req.headers.get("x-forwarded-host") || "";
+        if (originHost !== reqHost && (!hostHeader || !origin.includes(hostHeader.split(":")[0]))) {
+          return json({ error: "Request not allowed" }, 403);
+        }
+      } catch {}
+    }
+
     const db = E().DB;
     await ensureCustomerTable();
 
@@ -343,15 +364,6 @@ export async function POST(req: Request) {
       );
     }
 
-    if (body.action === "customerLogout")
-      return json(
-        { ok: true },
-        200,
-        {
-          "Set-Cookie":
-            "velto_customer=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
-        },
-      );
 
     if (body.action === "customerPasswordHelp") {
       const email = cleanEmail(body.email);

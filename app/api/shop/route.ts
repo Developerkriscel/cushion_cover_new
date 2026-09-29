@@ -510,6 +510,17 @@ export async function POST(req: Request) {
       return json({ ok: true });
     }
 
+    if (body.action === "customerLogout") {
+      return json(
+        { ok: true },
+        200,
+        {
+          "Set-Cookie":
+            "velto_customer=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax",
+        },
+      );
+    }
+
     
     if (body.action === "createCodOrder") {
       const uid = await user(req);

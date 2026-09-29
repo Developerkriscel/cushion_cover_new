@@ -204,6 +204,10 @@ export default function Store({
       setOrders(d.orders || []);
       setAddresses(d.addresses || []);
       setCouponsList(d.coupons || []);
+    } else {
+      setCustomer(null);
+      setOrders([]);
+      setAddresses([]);
     }
     if (!fromCache) setStateLoaded(true);
   }
@@ -217,7 +221,15 @@ export default function Store({
       .then((r) => r.json())
       .then((d: any) => {
         applyShopData(d);
-        if (d.products) sessionStorage.setItem(cacheKey, JSON.stringify(d));
+        if (d.products) {
+          const cacheData = { ...d };
+          if (!cacheData.customer) {
+            delete cacheData.customer;
+            delete cacheData.orders;
+            delete cacheData.addresses;
+          }
+          sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        }
       })
       .catch(() =>
         setError(
@@ -389,14 +401,38 @@ export default function Store({
   async function handleLogout() {
     setBusy(true);
     try {
-      await fetch("/api/customer/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "customerLogout" }),
-      });
-      window.location.reload();
+      setCustomer(null);
+      setOrders([]);
+      setAddresses([]);
+      setCouponsList([]);
+
+      try {
+        sessionStorage.removeItem("velto-shop-cache-v1");
+        sessionStorage.clear();
+      } catch {}
+
+      try {
+        document.cookie =
+          "velto_customer=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0";
+      } catch {}
+
+      await Promise.allSettled([
+        fetch("/api/customer/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "customerLogout" }),
+        }),
+        fetch("/api/shop", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "customerLogout" }),
+        }),
+      ]);
+    } catch (err) {
+      console.error("Logout failed:", err);
     } finally {
       setBusy(false);
+      window.location.href = "/";
     }
   }
   function choose(c: string) {
@@ -1832,9 +1868,7 @@ export default function Store({
                        <div style={{ padding: '16px' }}>
                          <button 
                             className="acc-logout-btn"
-                            onClick={() => { 
-                              fetch('/api/customer/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'customerLogout' }) }).then(() => window.location.reload());
-                            }}
+                            onClick={() => handleLogout()}
                          >
                            <Power size={20} color="#ef4444" strokeWidth={2.5} style={{ transition: 'all 0.2s' }} />
                            <span style={{ fontSize: '15px', fontWeight: 700, color: '#64748b', transition: 'all 0.2s' }}>Logout</span>
