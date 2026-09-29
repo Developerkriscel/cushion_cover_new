@@ -161,8 +161,11 @@ export default function AddressBook({ addresses, onUpdate, onSelect }: Props) {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleSubmit(e?: React.SyntheticEvent) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const nextAddress = cleanAddress(form);
     const message = validateAddress(nextAddress);
     if (message) {
@@ -213,9 +216,15 @@ export default function AddressBook({ addresses, onUpdate, onSelect }: Props) {
 
   if (showingForm) {
     return (
-      <form
+      <div
         className="address-form"
-        onSubmit={handleSubmit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSubmit(e);
+          }
+        }}
         style={{
           marginTop: "20px",
           padding: "20px",
@@ -363,19 +372,28 @@ export default function AddressBook({ addresses, onUpdate, onSelect }: Props) {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "20px" }}>
-          <button className="primary" disabled={busy} style={{ margin: 0, padding: "8px 16px", borderRadius: "4px" }}>
+          <button
+            type="button"
+            className="primary"
+            onClick={handleSubmit}
+            disabled={busy}
+            style={{ margin: 0, padding: "8px 16px", borderRadius: "4px" }}
+          >
             {busy ? "Saving..." : "Save Address"}
           </button>
           <button
             type="button"
-            onClick={cancelForm}
+            onClick={(e) => {
+              e.stopPropagation();
+              cancelForm();
+            }}
             style={{ margin: 0, padding: "8px 16px", background: "transparent", color: "#475569", border: "1px solid #cbd5e1", borderRadius: "4px", cursor: "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
             disabled={busy}
           >
             Cancel
           </button>
         </div>
-      </form>
+      </div>
     );
   }
 

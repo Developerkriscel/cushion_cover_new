@@ -1198,7 +1198,6 @@ export default function Store({
           {toast}
         </div>
       )}
-      \n{" "}
       <dialog
         ref={detail}
         className="product-dialog"
