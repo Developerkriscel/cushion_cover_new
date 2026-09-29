@@ -1765,15 +1765,21 @@ export default function Store({
       <dialog
         ref={loginDialogRef}
         className="login-modal fullscreen-dark-modal"
+        onCancel={() => setLoginDrawer(false)}
       >
-        <div style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative'
-        }}>
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLoginDrawer(false);
+          }}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative'
+          }}
+        >
           
           
                     {customer ? (
@@ -2227,16 +2233,55 @@ export default function Store({
                </div>
             </div>
           ) : (
-            <div style={{
-              background: '#f4f6f7',
-              width: '100%',
-              maxWidth: '400px',
-              borderRadius: '20px',
-              overflow: 'hidden',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-              textAlign: 'center',
-              paddingBottom: '20px'
-            }}>
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#f4f6f7',
+                width: '100%',
+                maxWidth: '400px',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                textAlign: 'center',
+                paddingBottom: '20px',
+                position: 'relative'
+              }}
+            >
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setLoginDrawer(false)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'rgba(0, 0, 0, 0.06)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  transition: 'all 0.2s',
+                  zIndex: 20
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.12)';
+                  e.currentTarget.style.color = '#0f172a';
+                  e.currentTarget.style.transform = 'scale(1.08)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.06)';
+                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.transform = 'none';
+                }}
+              >
+                <X size={18} />
+              </button>
+
               <div style={{
                 height: '8px',
                 background: 'linear-gradient(90deg, #185c62 0%, #159b9a 50%, #e8b92e 100%)'
@@ -2292,6 +2337,37 @@ export default function Store({
                     onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}
                   >
                     {authMode === "login" ? "Register" : "Log in"}
+                  </button>
+                </div>
+
+                <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
+                  <button
+                    type="button"
+                    onClick={() => setLoginDrawer(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#64748b',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.color = '#0f172a';
+                      e.currentTarget.style.background = '#e2e8f0';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.color = '#64748b';
+                      e.currentTarget.style.background = 'none';
+                    }}
+                  >
+                    <X size={14} /> Cancel & Return to Store
                   </button>
                 </div>
               </div>
