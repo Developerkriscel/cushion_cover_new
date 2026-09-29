@@ -1,4 +1,4 @@
-import { E, hmac, user } from "../../../shop-data";
+import { E, ensureStoreSchema, hmac, user } from "../../../shop-data";
 
 const json = (
   data: unknown,
@@ -42,6 +42,7 @@ function fromBase64(value: string) {
 }
 
 async function ensureCustomerTable() {
+  await ensureStoreSchema();
   const db = E().DB;
   await db
     .prepare(
@@ -53,6 +54,7 @@ async function ensureCustomerTable() {
     "ALTER TABLE customers ADD COLUMN phone TEXT",
     "ALTER TABLE customers ADD COLUMN last_name TEXT",
     "ALTER TABLE customers ADD COLUMN addresses TEXT",
+    "ALTER TABLE customers ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP",
   ]) {
     try {
       await db.prepare(statement).run();

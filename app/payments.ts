@@ -1,4 +1,4 @@
-import { E, products } from "./shop-data";
+import { E, ensureStoreSchema, products } from "./shop-data";
 
 type CheckoutSession = {
   id: string;
@@ -49,6 +49,7 @@ export async function paymentSession(gatewayId: string) {
 }
 
 async function ensureOrderColumns() {
+  await ensureStoreSchema();
   for (const statement of [
     "ALTER TABLE orders ADD COLUMN payment_method TEXT",
     "ALTER TABLE orders ADD COLUMN payment_status TEXT",
@@ -106,6 +107,7 @@ export async function settle(
   if (session.settled) return session.id;
 
   await ensureOrderColumns();
+  await seedStock();
   const db = E().DB;
   const customer = data.customer;
   const live = data.mode === "live";
@@ -171,6 +173,7 @@ export async function settle(
 }
 
 export async function seedStock() {
+  await ensureStoreSchema();
   for (const product of await products()) {
     await E()
       .DB.prepare("INSERT OR IGNORE INTO products(id,data) VALUES (?,?)")

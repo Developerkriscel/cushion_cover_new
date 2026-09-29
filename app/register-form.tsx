@@ -30,8 +30,14 @@ export default function RegisterForm({ onSuccess, onSwitch, busy, setBusy, state
     e.preventDefault();
     setError('');
 
-    if (form.password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    if (
+      form.password.length < 8 ||
+      !/[A-Z]/.test(form.password) ||
+      !/[a-z]/.test(form.password) ||
+      !/[0-9]/.test(form.password) ||
+      !/[^A-Za-z0-9]/.test(form.password)
+    ) {
+      setError('Password must include uppercase, lowercase, number and symbol.');
       return;
     }
 
@@ -107,7 +113,7 @@ export default function RegisterForm({ onSuccess, onSwitch, busy, setBusy, state
         style={inputStyle}
       />
       <input 
-        type="password" name="password" placeholder="Password (min 8 chars)" required
+        type="password" name="password" placeholder="Password (A-z, 0-9, symbol)" required
         value={form.password} onChange={handleChange}
         style={inputStyle}
       />

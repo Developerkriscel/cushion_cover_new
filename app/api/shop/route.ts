@@ -3,6 +3,7 @@ import { categories, validImage, ShopSettings, Coupon } from "../../shop-config"
 import {
   E,
   admin,
+  ensureStoreSchema,
   hmac,
   user,
   guestCookie,
@@ -13,6 +14,7 @@ import {
   quote,
   customer,
 } from "../../shop-data";
+import { seedStock } from "../../payments";
 
 const json = (
   data: unknown,
@@ -36,6 +38,7 @@ const saveConfig = (id: string, data: unknown) =>
     .run();
 
 async function ensureCustomerColumns() {
+  await ensureStoreSchema();
   const db = E().DB;
   await db
     .prepare(
@@ -68,6 +71,7 @@ async function ensureOrderColumns() {
 
 export async function GET(req: Request) {
   try {
+    await ensureStoreSchema();
     const s = await settings();
     const searchParams = new URL(req.url).searchParams;
 
@@ -156,6 +160,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    await ensureStoreSchema();
     const origin = req.headers.get("origin");
     if (origin) {
       try {
@@ -535,6 +540,7 @@ export async function POST(req: Request) {
       const uid = await user(req);
       if (!uid) return json({ error: "Unauthorized" }, 401);
 
+      await seedStock();
       const cust = customer(body);
       const quoted = await quote(body.items, body.coupon);
       
@@ -638,4 +644,3 @@ export async function POST(req: Request) {
     return json({ error: "Could not save your changes. Please try again." }, 503);
   }
 }
-
