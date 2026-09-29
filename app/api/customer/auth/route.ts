@@ -1,4 +1,4 @@
-import { E, hmac, user } from "../../../shop-data";
+import { E, hmac, user, ensureStoreSchema } from "../../../shop-data";
 
 const json = (
   data: unknown,
@@ -235,7 +235,7 @@ export async function POST(req: Request) {
 
     const body = JSON.parse(raw);
     const db = E().DB;
-    await ensureCustomerTable();
+    await ensureStoreSchema();
 
     if (body.action === "customerRegister") {
       const email = cleanEmail(body.email);
