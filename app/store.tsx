@@ -295,10 +295,75 @@ export default function Store({
       : "Date unavailable";
   };
   const orderItemImage = (item: any) => {
-    const savedImage = typeof item.image === "string" ? item.image : "";
-    if (savedImage) return savedImage.split(",")[0];
-    const product = products.find((p) => p.id === item.id);
-    return product?.image?.split(",")[0] || "/placeholder.png";
+    const savedImage = typeof item.image === "string" ? item.image.trim() : "";
+    if (savedImage && savedImage !== "/placeholder.png") return savedImage.split(",")[0];
+
+    // 1. Try finding by exact product ID
+    let product = products.find((p) => p.id === item.id);
+    if (product?.image) return product.image.split(",")[0];
+
+    // 2. Try finding by exact product Name
+    if (item.name) {
+      product = products.find(
+        (p) => p.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+      );
+      if (product?.image) return product.image.split(",")[0];
+    }
+
+    // 3. Known ID aliases
+    const legacyAliases: Record<string, string> = {
+      "cushion-cranes": "/cranes.png",
+      "cushion-dancing-cranes": "/cranes.png",
+      "apron-oat": "/apron.png",
+      "apron-everyday-linen": "/apron.png",
+      "cushion-marigold": "/marigold.png",
+      "table-sunday": "/table-cover.png",
+      "table-cover-sunday": "/table-cover.png",
+      "table-cover-sunday-linen": "/table-cover.png",
+      "cushion-terra": "/terracotta_cushion.jpg",
+      "cushion-terra-stripe": "/terracotta_cushion.jpg",
+      "cushion-floral": "/blue_floral_cushion.jpg",
+      "cushion-vintage": "/blue_floral_cushion.jpg",
+      "cushion-vintage-floral": "/blue_floral_cushion.jpg",
+      "apron-denim": "/denim_apron.jpg",
+      "apron-chef-denim": "/denim_apron.jpg",
+      "cushion-geo": "/beige_geometric_cushion.jpg",
+      "cushion-minimalist-geo": "/beige_geometric_cushion.jpg",
+      "cushion-mustard": "/mustard_cushion.jpg",
+      "cushion-vibrant-linen": "/mustard_cushion.jpg",
+      "apron-baker": "/white_bakers_apron.jpg",
+      "apron-classic-baker": "/white_bakers_apron.jpg",
+      "table-charcoal": "/charcoal_table_cover.jpg",
+      "table-cover-sophisticated-linen": "/charcoal_table_cover.jpg",
+      "cushion-sage": "/sage_velvet_cushion.jpg",
+      "cushion-sage-velvet": "/sage_velvet_cushion.jpg",
+      "apron-bistro": "/striped_apron.jpg",
+      "apron-bistro-stripe": "/striped_apron.jpg",
+      "table-picnic": "/checkered_table_cover.jpg",
+      "table-cover-picnic-check": "/checkered_table_cover.jpg",
+    };
+    if (item.id && legacyAliases[item.id]) return legacyAliases[item.id];
+
+    // 4. Fuzzy match by name keywords
+    const nameLower = (item.name || "").toLowerCase();
+    if (nameLower.includes("crane")) return "/cranes.png";
+    if (nameLower.includes("marigold")) return "/marigold.png";
+    if (nameLower.includes("apron") && nameLower.includes("linen")) return "/apron.png";
+    if (nameLower.includes("terra")) return "/terracotta_cushion.jpg";
+    if (nameLower.includes("sunday")) return "/table-cover.png";
+    if (nameLower.includes("floral") && nameLower.includes("cushion")) return "/blue_floral_cushion.jpg";
+    if (nameLower.includes("denim")) return "/denim_apron.jpg";
+    if (nameLower.includes("floral") && nameLower.includes("table")) return "/floral_table_cover.jpg";
+    if (nameLower.includes("lace")) return "/white_lace_table_cover.jpg";
+    if (nameLower.includes("geometric")) return "/beige_geometric_cushion.jpg";
+    if (nameLower.includes("mustard") || nameLower.includes("vibrant")) return "/mustard_cushion.jpg";
+    if (nameLower.includes("baker")) return "/white_bakers_apron.jpg";
+    if (nameLower.includes("charcoal")) return "/charcoal_table_cover.jpg";
+    if (nameLower.includes("sage")) return "/sage_velvet_cushion.jpg";
+    if (nameLower.includes("bistro")) return "/striped_apron.jpg";
+    if (nameLower.includes("check")) return "/checkered_table_cover.jpg";
+
+    return "/marigold.png";
   };
   const defaultAddress =
     addresses.find((address: Address) => address.isDefault) || addresses[0] || null;
@@ -1869,7 +1934,16 @@ export default function Store({
                                 {parseOrderItems(o.items).map((item, i) => (
                                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                     <div style={{ background: '#fff', padding: '5px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                      <img src={orderItemImage(item)} alt={item.name || "Product"} loading="lazy" decoding="async" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px' }} />
+                                      <img
+                                        src={orderItemImage(item)}
+                                        alt={item.name || "Product"}
+                                        loading="lazy"
+                                        decoding="async"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src = '/cushion.png';
+                                        }}
+                                        style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px' }}
+                                      />
                                     </div>
                                     <div style={{ flex: 1 }}>
                                       <p style={{ margin: '0 0 4px', fontSize: '16px', color: '#131e2d', fontWeight: 700 }}>{item.name}</p>

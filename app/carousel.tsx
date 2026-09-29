@@ -21,13 +21,13 @@ export default function Carousel({ images, alt, autoPlay = false, switchTime, hi
 
   if (!images || images.length === 0) return null;
   if (images.length === 1) {
-    return isVideo(images[0]) ? <video src={images[0]} autoPlay loop muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#f3f4ee' }} className="banner-video"/> : <img src={images[0]} alt={alt} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#f3f4ee' }} className="banner-video"/>;
+    return isVideo(images[0]) ? <video src={images[0]} autoPlay loop muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#f3f4ee' }} className="banner-video"/> : <img src={images[0]} alt={alt} loading="lazy" decoding="async" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/cushion.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#f3f4ee' }} className="banner-video"/>;
   }
 
 
   return (
     <div className="product-carousel-wrapper" style={{height: '100%'}}>
-      {isVideo(images[index]) ? <video key={images[index]} src={images[index]} autoPlay loop muted playsInline preload="metadata" style={{height: '100%', width: '100%', objectFit: 'cover'}} className="banner-video"/> : <img src={images[index]} alt={`${alt} - Image ${index + 1}`} loading="lazy" decoding="async" style={{height: '100%', width: '100%', objectFit: 'cover'}} className="banner-video"/>}
+      {isVideo(images[index]) ? <video key={images[index]} src={images[index]} autoPlay loop muted playsInline preload="metadata" style={{height: '100%', width: '100%', objectFit: 'cover'}} className="banner-video"/> : <img src={images[index]} alt={`${alt} - Image ${index + 1}`} loading="lazy" decoding="async" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/cushion.png'; }} style={{height: '100%', width: '100%', objectFit: 'cover'}} className="banner-video"/>}
       {!hideControls && (
         <>
           <button onClick={prev} className="carousel-btn prev-btn" aria-label="Previous image"><ChevronLeft size={28} /></button>

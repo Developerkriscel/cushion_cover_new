@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -7,7 +7,7 @@ export default function Carousel({ images, alt }: { images: string[], alt: strin
 
   if (!images || images.length === 0) return null;
   if (images.length === 1) {
-    return <img src={images[0]} alt={alt} decoding="async" style={{ width: '100%', maxHeight: '650px', objectFit: 'contain', background: '#f3f4ee' }} />;
+    return <img src={images[0]} alt={alt} decoding="async" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/cushion.png'; }} style={{ width: '100%', maxHeight: '650px', objectFit: 'contain', background: '#f3f4ee' }} />;
   }
 
   const prev = () => setIndex(i => i === 0 ? images.length - 1 : i - 1);
@@ -15,7 +15,7 @@ export default function Carousel({ images, alt }: { images: string[], alt: strin
 
   return (
     <div className="product-carousel-wrapper">
-      <img src={images[index]} alt={`${alt} - Image ${index + 1}`} decoding="async" />
+      <img src={images[index]} alt={`${alt} - Image ${index + 1}`} decoding="async" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/cushion.png'; }} />
       <button onClick={prev} className="carousel-btn prev-btn" aria-label="Previous image"><ChevronLeft size={28} /></button>
       <button onClick={next} className="carousel-btn next-btn" aria-label="Next image"><ChevronRight size={28} /></button>
       <div className="carousel-dots">

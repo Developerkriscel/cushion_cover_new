@@ -790,7 +790,15 @@ export default function Admin() {
                         <td>
                           <div className="custom-table-product">
                             <div className="custom-table-img-wrap">
-                              <img src={p.image.split(",")[0]} alt="" loading="lazy" decoding="async" />
+                              <img
+                                src={(p.image || "/cushion.png").split(",")[0]}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = "/cushion.png";
+                                }}
+                              />
                             </div>
                             <div className="custom-table-product-info">
                               <strong>{p.name}</strong>
