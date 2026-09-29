@@ -2,10 +2,31 @@ import {env} from 'cloudflare:workers';
 import {initialProducts,Product} from './catalog';
 import {categories,defaultSettings,ShopSettings,Coupon} from './shop-config';
 export const E=()=>env as unknown as {DB:D1Database;ADMIN_PASSWORD:string;CASHFREE_CLIENT_ID?:string;CASHFREE_CLIENT_SECRET?:string;CASHFREE_LIVE_ENABLED?:string};
-export async function config<T>(id:string,fallback:T):Promise<T>{const r=await E().DB.prepare('SELECT data FROM store_config WHERE id=?').bind(id).first<{data:string}>();return r?JSON.parse(r.data):fallback}
+let schemaReady:Promise<void>|null=null;
+export async function ensureStoreSchema(){if(schemaReady)return schemaReady;schemaReady=(async()=>{const db=E().DB;if(!db)throw Error('Database binding DB is missing.');for(const statement of [
+'CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY NOT NULL,data TEXT NOT NULL)',
+'CREATE TABLE IF NOT EXISTS store_config (id TEXT PRIMARY KEY NOT NULL,data TEXT NOT NULL)',
+'CREATE TABLE IF NOT EXISTS media (id TEXT PRIMARY KEY NOT NULL,mime TEXT NOT NULL,data TEXT NOT NULL)',
+'CREATE TABLE IF NOT EXISTS shopping_state (user_id TEXT PRIMARY KEY NOT NULL,data TEXT NOT NULL)',
+'CREATE TABLE IF NOT EXISTS checkout_sessions (id TEXT PRIMARY KEY NOT NULL,user_id TEXT NOT NULL,gateway_id TEXT NOT NULL,data TEXT NOT NULL,settled INTEGER DEFAULT 0 NOT NULL,created_at TEXT NOT NULL)',
+'CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY NOT NULL,user_id TEXT NOT NULL,customer TEXT NOT NULL,address TEXT NOT NULL,phone TEXT NOT NULL,pincode TEXT NOT NULL,items TEXT NOT NULL,total INTEGER NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,payment_method TEXT,payment_status TEXT,payment_id TEXT)',
+'CREATE TABLE IF NOT EXISTS customers (email TEXT PRIMARY KEY,password TEXT,name TEXT,last_name TEXT,phone TEXT,addresses TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)'
+])await db.prepare(statement).run();for(const statement of [
+'CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders (created_at)',
+'CREATE UNIQUE INDEX IF NOT EXISTS checkout_sessions_gateway_id_unique ON checkout_sessions (gateway_id)'
+]){try{await db.prepare(statement).run()}catch{}}for(const statement of [
+'ALTER TABLE orders ADD COLUMN payment_method TEXT',
+'ALTER TABLE orders ADD COLUMN payment_status TEXT',
+'ALTER TABLE orders ADD COLUMN payment_id TEXT',
+'ALTER TABLE customers ADD COLUMN phone TEXT',
+'ALTER TABLE customers ADD COLUMN last_name TEXT',
+'ALTER TABLE customers ADD COLUMN addresses TEXT',
+'ALTER TABLE customers ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP'
+]){try{await db.prepare(statement).run()}catch{}}})();return schemaReady}
+export async function config<T>(id:string,fallback:T):Promise<T>{await ensureStoreSchema();const r=await E().DB.prepare('SELECT data FROM store_config WHERE id=?').bind(id).first<{data:string}>();return r?JSON.parse(r.data):fallback}
 export async function settings(){const saved=await config<Partial<ShopSettings>&{paymentMode?:string}>('settings',{});return {...defaultSettings,...saved,paymentMode:saved.paymentMode==='test'?'test':'live'} as ShopSettings}
 export const coupons=()=>config<Coupon[]>('coupons',[]);
-export async function products(){const rows=await E().DB.prepare('SELECT data FROM products').all<{data:string}>();const map=new Map(initialProducts.map(p=>[p.id,p]));for(const r of rows.results){const p=JSON.parse(r.data) as Product;if(/^(vase|oven)-/.test(p.id))continue;const base=map.get(p.id);map.set(p.id,{...base,...p,image:p.image||base?.image,category:categories.includes(p.category as any)?p.category:(base?.category||p.category),color:p.color||base?.color||'Other',size:p.size||base?.size||'Standard'})}return [...map.values()].filter(p=>categories.includes(p.category as any))}
+export async function products(){await ensureStoreSchema();const rows=await E().DB.prepare('SELECT data FROM products').all<{data:string}>();const map=new Map(initialProducts.map(p=>[p.id,p]));for(const r of rows.results){const p=JSON.parse(r.data) as Product;if(/^(vase|oven)-/.test(p.id))continue;const base=map.get(p.id);map.set(p.id,{...base,...p,image:p.image||base?.image,category:categories.includes(p.category as any)?p.category:(base?.category||p.category),color:p.color||base?.color||'Other',size:p.size||base?.size||'Standard'})}return [...map.values()].filter(p=>categories.includes(p.category as any))}
 export async function hmac(v:string,secret=E().ADMIN_PASSWORD){if(!secret)throw Error('Server configuration is missing');const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return Array.from(new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(v)))).map(x=>x.toString(16).padStart(2,'0')).join('')}
 export async function hmacBase64(v:string,secret:string){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);const bytes=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(v)));let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary)}
 export function equal(a:string,b:string){if(a.length!==b.length)return false;let n=0;for(let i=0;i<a.length;i++)n|=a.charCodeAt(i)^b.charCodeAt(i);return n===0}
