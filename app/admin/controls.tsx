@@ -98,6 +98,7 @@ export function MultiImagePicker({
             {/\.mp4|\.webm/i.test(img) ? (
               <video
                 src={img}
+                preload="metadata"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 muted
               />
@@ -219,37 +220,42 @@ export function ImagePicker({
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const imageOptions = sampleImages.filter((v) => !/\.(mp4|webm)$/i.test(v));
   return (
     <div className="image-picker">
-      <img src={value} alt="Selected image preview" />
+      <img src={value || "/colour-banner.png"} alt="Selected image preview" />
       <select
         aria-label="Choose sample image"
-        value={sampleImages.includes(value) ? value : "custom"}
+        value={imageOptions.includes(value) ? value : "custom"}
         onChange={(e) => {
           if (e.target.value !== "custom") onChange(e.target.value);
         }}
       >
-        {sampleImages.map((v) => (
+        {imageOptions.map((v) => (
           <option key={v} value={v}>
             {v.slice(1, -4)}
           </option>
         ))}
-        {!sampleImages.includes(value) && (
+        {!imageOptions.includes(value) && (
           <option value="custom">Uploaded image</option>
         )}
       </select>
       <label className="upload-label">
-        {busy ? "Uploading…" : "Upload Image or Video (max 25 MB)"}
+        {busy ? "Uploading..." : "Upload Image (max 25 MB)"}
         <input
           type="file"
-          accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
+          accept="image/png,image/jpeg,image/webp"
           disabled={busy}
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
             setError("");
+            if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+              setError("Choose a PNG, JPG or WebP image.");
+              return;
+            }
             if (file.size > 25000000) {
-              setError("Choose media under 25 MB.");
+              setError("Choose an image under 25 MB.");
               return;
             }
             setBusy(true);
@@ -342,8 +348,10 @@ export default function Controls({
       await api(body);
       await reload();
       setNotice("Saved. Changes are now available on the storefront.");
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -385,10 +393,11 @@ export default function Controls({
                   Create promotional codes with a percentage or fixed rupee discount. Expiry is evaluated in India time.
                 </p>
                 <form
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
-                    save({ action: "saveCoupon", coupon });
-                    setCouponTab("list");
+                    if (await save({ action: "saveCoupon", coupon })) {
+                      setCouponTab("list");
+                    }
                   }}
                   style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
                 >

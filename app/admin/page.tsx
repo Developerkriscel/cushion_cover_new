@@ -35,6 +35,28 @@ type Order = {
   payment_status?: string;
   payment_id?: string;
 };
+
+const ORDER_STATUSES = [
+  "Received",
+  "Paid - stock review",
+  "COD - stock review",
+  "Packed",
+  "Shipped",
+  "Delivered",
+  "Cancelled",
+];
+
+const parseOrderItems = (items: string) => {
+  try {
+    const parsed = JSON.parse(items);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const paymentText = (value?: string) => value || "pending";
+
 export default function Admin() {
   const [authed, setAuthed] = useState(false),
     [loading, setLoading] = useState(true),
@@ -165,7 +187,7 @@ export default function Admin() {
            notifs.push({ id: `o-c-${o.id}`, type: 'cancel', text: `Order #${shortId} was cancelled`, time: d });
         } else {
            notifs.push({ id: `o-${o.id}`, type: 'order', text: `New order #${shortId} from ${o.customer}`, time: d });
-           if (o.payment_status === "Paid") {
+           if (String(o.payment_status || "").toLowerCase() === "paid") {
               notifs.push({ id: `p-${o.id}`, type: 'payment', text: `Payment of ${money(o.total)} received for #${shortId}`, time: new Date(d.getTime() + 1000) });
            }
         }
@@ -186,6 +208,21 @@ export default function Admin() {
     setReadNotifications(allIds);
     localStorage.setItem('admin_read_notifications', JSON.stringify(allIds));
   };
+
+  const isPaidOrder = (o: Order) =>
+    String(o.payment_status || "").toLowerCase() === "paid";
+  const isRevenueOrder = (o: Order) =>
+    o.status !== "Cancelled" &&
+    (isPaidOrder(o) ||
+      (String(o.payment_method || "").toLowerCase() === "cod" &&
+        o.status === "Delivered"));
+  const filteredOrdersForTab = orders.filter((o) =>
+    orderTab === "Delivered"
+      ? o.status === "Delivered"
+      : orderTab === "Cancelled"
+        ? o.status === "Cancelled"
+        : o.status !== "Delivered" && o.status !== "Cancelled",
+  );
 
   return (
     <div className="admin-shell">
@@ -526,15 +563,11 @@ export default function Admin() {
                   });
                   
                   const ordersCount = filteredOrders.length;
-                  const revenueCount = filteredOrders.filter(o => o.status !== "Cancelled").reduce((s, o) => s + o.total, 0);
+                  const revenueCount = filteredOrders.filter(isRevenueOrder).reduce((s, o) => s + o.total, 0);
                   const cancelledCount = filteredOrders.filter(o => o.status === "Cancelled").length;
                   const itemsSold = filteredOrders.filter(o => o.status !== "Cancelled").reduce((total, o) => {
-                    try {
-                      const items = JSON.parse(o.items);
-                      return total + items.reduce((s: number, item: any) => s + (item.qty || 1), 0);
-                    } catch(e) {
-                      return total;
-                    }
+                    const items = parseOrderItems(o.items);
+                    return total + items.reduce((s: number, item: any) => s + (item.qty || 1), 0);
                   }, 0);
 
                   const chartData = Array.from({ length: chartDays }, (_, i) => {
@@ -544,7 +577,7 @@ export default function Admin() {
                   });
                   
                   filteredOrders.forEach(o => {
-                    if (o.status === "Cancelled") return;
+                    if (!isRevenueOrder(o)) return;
                     const d = o.created_at.split('T')[0];
                     const day = chartData.find(x => x.date === d);
                     if (day) {
@@ -651,8 +684,9 @@ export default function Admin() {
             )}
             <div className="demo-notice">
               Checkout mode: {settings.paymentMode}. Gateway:{" "}
-              {payment.ready ? "configured" : "not configured"}. Customer orders
-              are accepted only after Cashfree payment verification.
+              {payment.ready ? "configured" : "not configured"}. Cashfree
+              orders require payment verification; COD orders remain pending
+              until delivery is completed.
             </div>
             {notice && (
               <p className="save-notice" role="status">
@@ -683,7 +717,7 @@ export default function Admin() {
                         description: "",
                         material: "Cotton",
                         color: "Natural",
-                        size: "40 × 40 cm",
+                        size: "40 x 40 cm",
                         seoTitle: "",
                         seoDescription: "",
                         dimensions: "",
@@ -743,12 +777,12 @@ export default function Admin() {
                       <p className="custom-kpi-value">
                         {money(
                           orders
-                            .filter((o) => o.status !== "Cancelled")
+                            .filter(isRevenueOrder)
                             .reduce((s, o) => s + o.total, 0),
                         )}
                       </p>
                       <span className="custom-kpi-status good">
-                        Excluding Cancelled
+                        Paid + delivered COD
                       </span>
                     </div>
                     <div className="custom-kpi-icon-wrap">
@@ -845,7 +879,6 @@ export default function Admin() {
                 </table>
               </div>
             ) : tab === "Orders" ? (
-              orders.length ? (
               <>
                 <style>{`
 .custom-order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-top: 20px; }
@@ -933,16 +966,20 @@ export default function Admin() {
                   </button>
                 </div>
                 <div className="custom-order-grid">
-                  {orders
-                    .filter((o) =>
-                      orderTab === "Delivered"
-                        ? o.status === "Delivered"
-                        : orderTab === "Cancelled"
-                          ? o.status === "Cancelled"
-                          : o.status !== "Delivered" &&
-                            o.status !== "Cancelled",
-                    )
-                    .map((o) => (
+                  {!filteredOrdersForTab.length ? (
+                    <div className="empty" style={{ gridColumn: "1 / -1" }}>
+                      <ShoppingBag size={38} />
+                      <h3>No {orderTab.toLowerCase()} orders.</h3>
+                      <p>
+                        Orders will appear here as customers place Cashfree or
+                        COD purchases.
+                      </p>
+                      <a className="text-link" href="/">
+                        Visit storefront <ArrowUpRight size={17} />
+                      </a>
+                    </div>
+                  ) : null}
+                  {filteredOrdersForTab.map((o) => (
                       <article key={o.id} className="custom-order-card">
                         <div className="custom-order-header">
                           <div>
@@ -971,14 +1008,7 @@ export default function Admin() {
                                 }
                               }}
                             >
-                              {[
-                                "Received",
-                                "Paid - stock review",
-                                "Packed",
-                                "Shipped",
-                                "Delivered",
-                                "Cancelled",
-                              ].map((x) => (
+                              {ORDER_STATUSES.map((x) => (
                                 <option key={x}>{x}</option>
                               ))}
                             </select>
@@ -1036,7 +1066,7 @@ export default function Admin() {
                                 Pincode: {o.pincode}
                               </div>
                               <div className="custom-contact-item">
-                                Payment: {o.payment_status || "pending"} via{" "}
+                                Payment: {paymentText(o.payment_status)} via{" "}
                                 {o.payment_method || "unknown"}
                               </div>
                               {o.payment_id && (
@@ -1051,7 +1081,7 @@ export default function Admin() {
                             </div>
                           </div>
                           <ul className="custom-order-items">
-                            {JSON.parse(o.items).map((x: any) => (
+                            {parseOrderItems(o.items).map((x: any) => (
                               <li key={x.id} className="custom-order-item">
                                 <span className="custom-item-name">
                                   {x.name}{" "}
@@ -1070,19 +1100,7 @@ export default function Admin() {
                     ))}
                 </div>
               </>
-            ) : (
-              <div className="empty">
-                <ShoppingBag size={38} />
-                <h3>No paid orders yet.</h3>
-                <p>
-                  Paid customer orders will appear here after Cashfree
-                  verification.
-                </p>
-                <a className="text-link" href="/">
-                  Visit storefront <ArrowUpRight size={17} />
-                </a>
-              </div>
-            )) : null}
+            ) : null}
           </>
         )}
         {editing && (
@@ -1308,7 +1326,7 @@ export default function Admin() {
                 
                 <h3 style={{ margin: '0 0 15px', fontSize: '15px', color: '#0f172a', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>Order Items</h3>
                 <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px' }}>
-                  {JSON.parse(viewingOrder.items).map((x: any) => (
+                  {parseOrderItems(viewingOrder.items).map((x: any) => (
                     <li key={x.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f1f5f9', fontSize: '14px' }}>
                       <span style={{ fontWeight: 500, color: '#1e293b' }}>
                         {x.name} <span style={{ color: '#64748b', fontSize: '13px', marginLeft: '8px' }}>x {x.qty}</span>
@@ -1324,8 +1342,8 @@ export default function Admin() {
                   <div>
                     <h3 style={{ margin: '0 0 4px', fontSize: '14px', color: '#166534' }}>Payment Information</h3>
                     <p style={{ margin: 0, fontSize: '13px', color: '#15803d' }}>
-                      Method: {viewingOrder.payment_method || 'unknown'} • Status: {viewingOrder.payment_status || 'pending'}
-                      {viewingOrder.payment_id ? ` • Ref: ${viewingOrder.payment_id}` : ''}
+                      Method: {viewingOrder.payment_method || 'unknown'} | Status: {paymentText(viewingOrder.payment_status)}
+                      {viewingOrder.payment_id ? ` | Ref: ${viewingOrder.payment_id}` : ''}
                     </p>
                   </div>
                   <strong style={{ fontSize: '24px', color: '#166534' }}>{money(viewingOrder.total)}</strong>

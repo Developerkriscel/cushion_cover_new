@@ -184,8 +184,13 @@ export async function POST(req: Request) {
     const db = E().DB;
 
     if (body.action === "login") {
+      if (!E().ADMIN_PASSWORD)
+        return json(
+          { error: "Admin password is not configured in hosting secrets." },
+          503,
+        );
+
       if (
-        !E().ADMIN_PASSWORD ||
         typeof body.password !== "string" ||
         body.password !== E().ADMIN_PASSWORD
       )
@@ -614,6 +619,7 @@ export async function POST(req: Request) {
         ![
           "Received",
           "Paid - stock review",
+          "COD - stock review",
           "Packed",
           "Shipped",
           "Delivered",
