@@ -1281,3 +1281,78 @@ html, body {
   border-radius: 8px !important;
   margin: 0 !important;
 }
+
+/* Fullscreen Dialogs & Cart Drawer Screen Fit & No Scroll Fix */
+.cart-dialog {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: calc(100vh / 0.9) !important;
+  height: calc(100dvh / 0.9) !important;
+  max-height: calc(100vh / 0.9) !important;
+  max-height: calc(100dvh / 0.9) !important;
+  width: 420px;
+  max-width: 100%;
+  box-sizing: border-box !important;
+  box-shadow: -10px 0 60px rgba(0, 0, 0, 0.25) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  background: #fff !important;
+  margin: 0 !important;
+  border: 0 !important;
+  z-index: 100000 !important;
+}
+
+.cart-head {
+  flex: 0 0 auto !important;
+  padding: 20px 24px !important;
+}
+
+.cart-items {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  padding: 0 24px !important;
+}
+
+.cart-bottom {
+  flex: 0 0 auto !important;
+  padding: 20px 24px !important;
+  background: #fff !important;
+  border-top: 1px solid #dce0d5 !important;
+  margin-top: auto !important;
+}
+
+.cart-dialog.checkout-modal-full,
+.fullscreen-dark-modal,
+dialog.fullscreen-dark-modal {
+  width: calc(100vw / 0.9) !important;
+  height: calc(100vh / 0.9) !important;
+  height: calc(100dvh / 0.9) !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  border: none !important;
+  box-sizing: border-box !important;
+}
+
+.cart-items::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.cart-items::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cart-items::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}

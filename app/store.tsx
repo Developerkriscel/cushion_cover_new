@@ -1860,7 +1860,7 @@ export default function Store({
           
           
                     {customer ? (
-            <div style={{ background: '#f8fafc', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 99999, overflowY: 'auto', fontFamily: '"Inter", sans-serif' }}>
+            <div style={{ background: '#f8fafc', width: 'calc(100vw / 0.9)', height: 'calc(100vh / 0.9)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, overflowY: 'auto', fontFamily: '"Inter", sans-serif' }}>
               <style>{`
                 .acc-tab-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 18px 24px; background: none; border: none; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s ease; position: relative; overflow: hidden; }
                 .acc-tab-btn:hover { background: #f8fafc; }
@@ -1892,7 +1892,7 @@ export default function Store({
                  </div>
                </div>
 
-               <div style={{ width: '100%', display: 'flex', gap: '30px', alignItems: 'flex-start', padding: '40px 40px', minHeight: 'calc(100vh - 140px)' }}>
+               <div style={{ width: '100%', display: 'flex', gap: '30px', alignItems: 'flex-start', padding: '24px 32px', minHeight: 'calc((100vh / 0.9) - 100px)', boxSizing: 'border-box' }}>
                  {/* SIDEBAR */}
                  <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '24px', position: 'sticky', top: '90px' }}>
                     <div style={{ background: 'linear-gradient(135deg, #0e7579 0%, #115e59 100%)', padding: '24px', display: 'flex', alignItems: 'center', gap: '18px', boxShadow: '0 10px 25px -5px rgba(14, 117, 121, 0.4)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
@@ -1962,7 +1962,7 @@ export default function Store({
                  </div>
 
                  {/* CONTENT AREA */}
-                 <div style={{ flex: 1, background: accountTab === 'orders' ? 'transparent' : '#fff', boxShadow: accountTab === 'orders' ? 'none' : '0 10px 40px -10px rgba(0,0,0,0.08)', borderRadius: '16px', border: accountTab === 'orders' ? 'none' : '1px solid #e2e8f0', minHeight: '600px', padding: '0', display: 'flex', flexDirection: 'column', overflow: accountTab === 'orders' ? 'visible' : 'hidden' }}>
+                 <div style={{ flex: 1, background: accountTab === 'orders' ? 'transparent' : '#fff', boxShadow: accountTab === 'orders' ? 'none' : '0 10px 40px -10px rgba(0,0,0,0.08)', borderRadius: '16px', border: accountTab === 'orders' ? 'none' : '1px solid #e2e8f0', minHeight: 'auto', padding: '0', display: 'flex', flexDirection: 'column', overflow: accountTab === 'orders' ? 'visible' : 'hidden' }}>
                   {accountTab === 'profile' && (
                     <div style={{ width: "100%", padding: "0" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "30px 40px", borderBottom: "1px solid #f1f5f9", background: '#f8fafc' }}>
