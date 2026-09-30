@@ -325,6 +325,7 @@ export async function POST(req: Request) {
     if (
       [
         "saveProduct",
+        "deleteProduct",
         "saveSettings",
         "saveCoupon",
         "deleteCoupon",
@@ -464,6 +465,20 @@ export async function POST(req: Request) {
         .run();
 
       return json({ ok: true });
+    }
+
+    if (body.action === "deleteProduct") {
+      const id = typeof body.id === "string" ? body.id.trim() : "";
+      if (!id) return json({ error: "Product ID is required." }, 400);
+
+      await db
+        .prepare(
+          "INSERT INTO products (id,data) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
+        )
+        .bind(id, JSON.stringify({ id, deleted: true }))
+        .run();
+
+      return json({ ok: true, products: await products() });
     }
 
     if (body.action === "saveSettings") {
