@@ -1028,18 +1028,6 @@ button{border:0;background:none;color:inherit}button:disabled{opacity:.5;cursor:
   transform: translateY(-2px);
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3);
 }
-.custom-action-btn.delete-btn {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fee2e2;
-}
-.custom-action-btn.delete-btn:hover {
-  background: #fee2e2;
-  color: #b91c1c;
-  border-color: #fca5a5;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
-}
 .text-right { text-align: right; }
 
 /* Product Details Gallery */

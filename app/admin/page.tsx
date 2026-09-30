@@ -16,7 +16,6 @@ import {
   Printer,
   Eye,
   LockKeyhole,
-  Trash2,
 } from "lucide-react";
 import { Product, money } from "../catalog";
 import { categories, defaultSettings } from "../shop-config";
@@ -81,20 +80,14 @@ export default function Admin() {
     [showNotifications, setShowNotifications] = useState(false),
     [readNotifications, setReadNotifications] = useState<string[]>([]),
     [viewingOrder, setViewingOrder] = useState<Order | null>(null),
-    [changingPassword, setChangingPassword] = useState(false),
-    [deleting, setDeleting] = useState<Product | null>(null);
+    [changingPassword, setChangingPassword] = useState(false);
   const editDialog = useRef<HTMLDialogElement>(null);
   const viewOrderDialog = useRef<HTMLDialogElement>(null);
   const passwordDialog = useRef<HTMLDialogElement>(null);
-  const deleteDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (editing) editDialog.current?.showModal();
     else editDialog.current?.close();
   }, [editing]);
-  useEffect(() => {
-    if (deleting) deleteDialog.current?.showModal();
-    else deleteDialog.current?.close();
-  }, [deleting]);
   useEffect(() => {
     if (viewingOrder) viewOrderDialog.current?.showModal();
     else viewOrderDialog.current?.close();
@@ -176,28 +169,6 @@ export default function Admin() {
       setEditing(null);
       setNotice("Product saved. Your storefront is up to date.");
       await load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDeleteProduct(id: string) {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await api({
-        action: "deleteProduct",
-        id,
-      });
-      if (res.products) {
-        setProducts(res.products);
-      } else {
-        await load();
-      }
-      setDeleting(null);
-      setNotice("Product deleted successfully.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -939,7 +910,6 @@ export default function Admin() {
                               <ArrowUpRight size={14} /> View
                             </a>
                             <button
-                              type="button"
                               className="custom-action-btn edit-btn"
                               onClick={() => {
                                 setError("");
@@ -947,17 +917,6 @@ export default function Admin() {
                               }}
                             >
                               Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="custom-action-btn delete-btn"
-                              onClick={() => {
-                                setError("");
-                                setDeleting(p);
-                              }}
-                              title={`Delete ${p.name}`}
-                            >
-                              <Trash2 size={14} /> Delete
                             </button>
                           </div>
                         </td>
@@ -1421,161 +1380,11 @@ export default function Admin() {
                     {error}
                   </p>
                 )}
-                <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "24px", flexWrap: "wrap" }}>
-                  <button className="primary" disabled={busy} style={{ flex: 1, margin: 0 }}>
-                    {busy ? "Saving…" : "Save product"}
-                    <Check size={18} />
-                  </button>
-                  {products.some((x) => x.id === editing.id) && (
-                    <button
-                      type="button"
-                      className="custom-action-btn delete-btn"
-                      disabled={busy}
-                      style={{ padding: "0 20px", fontSize: "14px", height: "46px", borderRadius: "10px" }}
-                      onClick={() => {
-                        const target = editing;
-                        setEditing(null);
-                        setDeleting(target);
-                      }}
-                    >
-                      <Trash2 size={16} /> Delete Product
-                    </button>
-                  )}
-                </div>
-              </form>
-            </section>
-          </dialog>
-        )}
-        {deleting && (
-          <dialog
-            ref={deleteDialog}
-            className="edit-overlay"
-            onCancel={() => setDeleting(null)}
-          >
-            <section
-              className="edit-product"
-              style={{ maxWidth: "480px", borderRadius: "20px", overflow: "hidden" }}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="delete-title"
-            >
-              <div className="cart-head" style={{ borderBottom: "1px solid #f1f5f9", padding: "20px 24px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "12px",
-                      background: "#fef2f2",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#dc2626",
-                    }}
-                  >
-                    <Trash2 size={22} />
-                  </div>
-                  <h3 id="delete-title" style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#0f172a" }}>
-                    Delete Product
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close dialog"
-                  onClick={() => setDeleting(null)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "6px" }}
-                >
-                  <X size={20} />
+                <button className="primary" disabled={busy}>
+                  {busy ? "Saving…" : "Save product"}
+                  <Check size={18} />
                 </button>
-              </div>
-
-              <div style={{ padding: "24px" }}>
-                <div
-                  style={{
-                    background: "#f8fafc",
-                    borderRadius: "12px",
-                    padding: "14px",
-                    display: "flex",
-                    gap: "14px",
-                    alignItems: "center",
-                    marginBottom: "18px",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <img
-                    src={(deleting.image || "/cushion.png").split(",")[0]}
-                    alt=""
-                    style={{ width: "54px", height: "54px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/cushion.png";
-                    }}
-                  />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <strong style={{ display: "block", color: "#0f172a", fontSize: "14px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {deleting.name}
-                    </strong>
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px", fontSize: "12px", color: "#64748b" }}>
-                      <span className="custom-category-badge" style={{ padding: "2px 8px", fontSize: "10px" }}>{deleting.category}</span>
-                      <span>·</span>
-                      <strong style={{ color: "#0f172a" }}>{money(deleting.price)}</strong>
-                      <span>·</span>
-                      <span>{deleting.stock} in stock</span>
-                    </div>
-                  </div>
-                </div>
-
-                <p style={{ color: "#475569", fontSize: "14px", lineHeight: "1.6", margin: "0 0 20px 0" }}>
-                  Are you sure you want to delete this product? This will remove <strong>{deleting.name}</strong> from your active store catalog and it will no longer be visible or purchasable by customers.
-                </p>
-
-                {error && (
-                  <p className="error" role="alert" style={{ marginBottom: "16px" }}>
-                    {error}
-                  </p>
-                )}
-
-                <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setDeleting(null)}
-                    style={{
-                      padding: "10px 18px",
-                      background: "#f1f5f9",
-                      color: "#475569",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "10px",
-                      fontWeight: 600,
-                      fontSize: "14px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => handleDeleteProduct(deleting.id)}
-                    style={{
-                      padding: "10px 22px",
-                      background: "linear-gradient(135deg, #dc2626, #b91c1c)",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "10px",
-                      fontWeight: 600,
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      boxShadow: "0 4px 12px rgba(220, 38, 38, 0.25)",
-                    }}
-                  >
-                    <Trash2 size={16} />
-                    {busy ? "Deleting…" : "Delete Product"}
-                  </button>
-                </div>
-              </div>
+              </form>
             </section>
           </dialog>
         )}
