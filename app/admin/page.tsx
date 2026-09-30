@@ -317,7 +317,7 @@ export default function Admin() {
             )
           )}
         </div>
-        <div className="admin-tabs" style={{ marginTop: 'auto', borderTop: '1px solid #334e40', paddingTop: '10px' }}>
+        <div className="admin-tabs" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '10px' }}>
           {authed && (
             <button
               style={{ color: '#ef4444' }}
@@ -329,7 +329,7 @@ export default function Admin() {
               <LogOut size={18} /> Sign out
             </button>
           )}
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', padding: '15px', fontSize: '14px', color: '#f7f5eb', textDecoration: 'none' }} onMouseOver={e => e.currentTarget.style.background = '#ffffff18'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', padding: '10px 14px', fontSize: '13.5px', color: '#f7f5eb', textDecoration: 'none', borderRadius: '8px' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
             <ArrowLeft size={18} /> Back to store
           </a>
         </div>
