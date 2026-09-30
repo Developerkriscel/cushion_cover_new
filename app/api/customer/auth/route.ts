@@ -366,6 +366,40 @@ export async function POST(req: Request) {
       );
     }
 
+    if (body.action === "customerChangePassword") {
+      const signedInUser = await user(req);
+      if (!signedInUser || !signedInUser.startsWith("customer:"))
+        return json({ error: "Customer sign-in required." }, 401);
+
+      const email = signedInUser.slice("customer:".length);
+      const currentPassword = cleanPassword(body.currentPassword);
+      const newPassword = cleanPassword(body.newPassword);
+
+      if (!validPassword(newPassword))
+        return json(
+          { error: "New password must include uppercase, lowercase, number and symbol." },
+          400,
+        );
+      if (currentPassword === newPassword)
+        return json({ error: "New password must be different." }, 400);
+
+      const customer = await db
+        .prepare("SELECT password FROM customers WHERE email=?")
+        .bind(email)
+        .first<{ password: string }>();
+      if (!customer) return json({ error: "Account not found." }, 404);
+
+      const result = await verifyPassword(currentPassword, customer.password || "");
+      if (!result.ok) return json({ error: "Current password is incorrect." }, 401);
+
+      await db
+        .prepare("UPDATE customers SET password=? WHERE email=?")
+        .bind(await hashPassword(newPassword), email)
+        .run();
+
+      return json({ ok: true });
+    }
+
 
     if (body.action === "customerPasswordHelp") {
       const email = cleanEmail(body.email);

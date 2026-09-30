@@ -15,6 +15,7 @@ import {
   Bell,
   Printer,
   Eye,
+  LockKeyhole,
 } from "lucide-react";
 import { Product, money } from "../catalog";
 import { categories, defaultSettings } from "../shop-config";
@@ -78,9 +79,11 @@ export default function Admin() {
     [payment, setPayment] = useState<any>({}),
     [showNotifications, setShowNotifications] = useState(false),
     [readNotifications, setReadNotifications] = useState<string[]>([]),
-    [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+    [viewingOrder, setViewingOrder] = useState<Order | null>(null),
+    [changingPassword, setChangingPassword] = useState(false);
   const editDialog = useRef<HTMLDialogElement>(null);
   const viewOrderDialog = useRef<HTMLDialogElement>(null);
+  const passwordDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (editing) editDialog.current?.showModal();
     else editDialog.current?.close();
@@ -89,6 +92,10 @@ export default function Admin() {
     if (viewingOrder) viewOrderDialog.current?.showModal();
     else viewOrderDialog.current?.close();
   }, [viewingOrder]);
+  useEffect(() => {
+    if (changingPassword) passwordDialog.current?.showModal();
+    else passwordDialog.current?.close();
+  }, [changingPassword]);
   useEffect(() => {
     try {
       const stored = localStorage.getItem('admin_read_notifications');
@@ -162,6 +169,37 @@ export default function Admin() {
       setEditing(null);
       setNotice("Product saved. Your storefront is up to date.");
       await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeAdminPassword(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    const f = new FormData(e.currentTarget);
+    const currentPassword = String(f.get("currentPassword") || "");
+    const newPassword = String(f.get("newPassword") || "");
+    const confirmPassword = String(f.get("confirmPassword") || "");
+
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirmation do not match.");
+      setBusy(false);
+      return;
+    }
+
+    try {
+      await api({
+        action: "changeAdminPassword",
+        currentPassword,
+        newPassword,
+      });
+      setChangingPassword(false);
+      setNotice("Admin password changed. Use the new password next time.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -322,6 +360,15 @@ export default function Admin() {
                   </div>
                 )}
               </div>
+              <button
+                className="text-link"
+                onClick={() => {
+                  setError("");
+                  setChangingPassword(true);
+                }}
+              >
+                <LockKeyhole size={16} /> Change password
+              </button>
               <button
                 className="text-link"
                 onClick={async () => {
@@ -1102,6 +1149,78 @@ export default function Admin() {
               </>
             ) : null}
           </>
+        )}
+        {changingPassword && (
+          <dialog
+            ref={passwordDialog}
+            className="edit-overlay"
+            onCancel={() => setChangingPassword(false)}
+          >
+            <section
+              className="edit-product"
+              style={{ maxWidth: "460px" }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="admin-password-title"
+            >
+              <div className="cart-head">
+                <h2 id="admin-password-title">Change admin password</h2>
+                <button
+                  aria-label="Close password dialog"
+                  onClick={() => setChangingPassword(false)}
+                >
+                  <X />
+                </button>
+              </div>
+              <form onSubmit={changeAdminPassword}>
+                <label>
+                  Current password
+                  <input
+                    name="currentPassword"
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                  />
+                </label>
+                <label>
+                  New password
+                  <input
+                    name="newPassword"
+                    type="password"
+                    required
+                    minLength={8}
+                    maxLength={128}
+                    autoComplete="new-password"
+                    placeholder="A-z, 0-9, symbol"
+                  />
+                </label>
+                <label>
+                  Confirm new password
+                  <input
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    minLength={8}
+                    maxLength={128}
+                    autoComplete="new-password"
+                  />
+                </label>
+                <small style={{ color: "#64748b", lineHeight: 1.5 }}>
+                  Use at least 8 characters with uppercase, lowercase, number
+                  and symbol.
+                </small>
+                {error && (
+                  <p className="error" role="alert">
+                    {error}
+                  </p>
+                )}
+                <button className="primary" disabled={busy}>
+                  {busy ? "Saving..." : "Change password"}
+                  <Check size={18} />
+                </button>
+              </form>
+            </section>
+          </dialog>
         )}
         {editing && (
           <dialog

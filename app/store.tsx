@@ -183,7 +183,7 @@ export default function Store({
     [loginDrawer, setLoginDrawer] = useState(false),
     [authMode, setAuthMode] = useState<"login" | "register">("login"),
     [accountDropdown, setAccountDropdown] = useState(false),
-    [accountTab, setAccountTab] = useState<"profile" | "orders" | "addresses" | "coupons" | "wishlist" | "bag">(
+    [accountTab, setAccountTab] = useState<"profile" | "password" | "orders" | "addresses" | "coupons" | "wishlist" | "bag">(
       "profile",
     );
   const [stateLoaded, setStateLoaded] = useState(false);
@@ -675,6 +675,42 @@ export default function Store({
         .then((resp) => {
           if (resp.orders) setOrders(resp.orders);
         });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function changeCustomerPassword(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const form = e.currentTarget;
+    const f = new FormData(form);
+    const currentPassword = String(f.get("currentPassword") || "");
+    const newPassword = String(f.get("newPassword") || "");
+    const confirmPassword = String(f.get("confirmPassword") || "");
+
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirmation do not match.");
+      setBusy(false);
+      return;
+    }
+
+    try {
+      const r = await fetch("/api/customer/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "customerChangePassword",
+          currentPassword,
+          newPassword,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Could not change password.");
+      form.reset();
+      setToast("Password changed.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1909,6 +1945,7 @@ export default function Store({
                          </div>
                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                            <button onClick={() => setAccountTab('profile')} className={`acc-subtab-btn ${accountTab === "profile" ? "active" : ""}`} style={{ color: accountTab === "profile" ? "#0e7579" : "#475569", fontWeight: accountTab === 'profile' ? 700 : 500 }}>Profile Information</button>
+                           <button onClick={() => setAccountTab('password')} className={`acc-subtab-btn ${accountTab === "password" ? "active" : ""}`} style={{ color: accountTab === "password" ? "#0e7579" : "#475569", fontWeight: accountTab === 'password' ? 700 : 500 }}>Change Password</button>
                            <button onClick={() => setAccountTab('addresses')} className={`acc-subtab-btn ${accountTab === "addresses" ? "active" : ""}`} style={{ color: accountTab === "addresses" ? "#0e7579" : "#475569", fontWeight: accountTab === 'addresses' ? 700 : 500 }}>Manage Addresses</button>
                          </div>
                        </div>
@@ -1990,6 +2027,65 @@ export default function Store({
                           </div>
                         )}
                       </div>
+                    </div>
+                  )}
+                  {accountTab === 'password' && (
+                    <div style={{ width: "100%", padding: "0" }}>
+                      <div style={{ padding: "30px 40px", borderBottom: "1px solid #f1f5f9", background: '#f8fafc' }}>
+                        <h3 style={{ margin: 0, color: '#0f172a', fontWeight: 900, fontSize: '22px', letterSpacing: '-0.5px' }}>Change Password</h3>
+                      </div>
+                      <form
+                        onSubmit={changeCustomerPassword}
+                        style={{ padding: "30px", display: "flex", flexDirection: "column", gap: "20px", maxWidth: "520px" }}
+                      >
+                        <div>
+                          <label style={{ display: 'block', fontSize: '14px', color: '#68778d', fontWeight: 600, marginBottom: '5px' }}>Current Password</label>
+                          <input
+                            type="password"
+                            name="currentPassword"
+                            required
+                            autoComplete="current-password"
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '16px', outline: 'none' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '14px', color: '#68778d', fontWeight: 600, marginBottom: '5px' }}>New Password</label>
+                          <input
+                            type="password"
+                            name="newPassword"
+                            required
+                            minLength={8}
+                            maxLength={128}
+                            autoComplete="new-password"
+                            placeholder="A-z, 0-9, symbol"
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '16px', outline: 'none' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '14px', color: '#68778d', fontWeight: 600, marginBottom: '5px' }}>Confirm New Password</label>
+                          <input
+                            type="password"
+                            name="confirmPassword"
+                            required
+                            minLength={8}
+                            maxLength={128}
+                            autoComplete="new-password"
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '16px', outline: 'none' }}
+                          />
+                        </div>
+                        <p style={{ color: '#64748b', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
+                          Use at least 8 characters with uppercase, lowercase,
+                          number and symbol.
+                        </p>
+                        {error && <p className="error" role="alert">{error}</p>}
+                        <button
+                          type="submit"
+                          disabled={busy}
+                          style={{ padding: '12px 20px', background: '#131e2d', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', alignSelf: 'flex-start' }}
+                        >
+                          {busy ? "Saving..." : "Change Password"}
+                        </button>
+                      </form>
                     </div>
                   )}
                   {accountTab === 'orders' && (

@@ -29,6 +29,75 @@ const json = (
 const str = (value: unknown, max: number, min = 0) =>
   typeof value === "string" && value.trim().length >= min && value.length <= max;
 
+const encoder = new TextEncoder();
+const PASSWORD_ITERATIONS = 150000;
+
+function toBase64(bytes: Uint8Array) {
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function fromBase64(value: string) {
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+async function derivePassword(password: string, salt: Uint8Array, iterations: number) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    key,
+    256,
+  );
+  return new Uint8Array(bits);
+}
+
+async function hashPassword(password: string) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await derivePassword(password, salt, PASSWORD_ITERATIONS);
+  return `pbkdf2$${PASSWORD_ITERATIONS}$${toBase64(salt)}$${toBase64(hash)}`;
+}
+
+async function verifyPassword(password: string, stored: string) {
+  if (!stored.startsWith("pbkdf2$")) {
+    return { ok: stored === password, upgrade: stored === password };
+  }
+
+  const [, iterationsRaw, saltRaw, hashRaw] = stored.split("$");
+  const iterations = Number(iterationsRaw);
+  if (!Number.isInteger(iterations) || !saltRaw || !hashRaw)
+    return { ok: false, upgrade: false };
+
+  const salt = fromBase64(saltRaw);
+  const expected = fromBase64(hashRaw);
+  const actual = await derivePassword(password, salt, iterations);
+
+  if (actual.length !== expected.length) return { ok: false, upgrade: false };
+
+  let diff = 0;
+  for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expected[i];
+
+  return {
+    ok: diff === 0,
+    upgrade: diff === 0 && iterations < PASSWORD_ITERATIONS,
+  };
+}
+
+function validPassword(password: string) {
+  return (
+    password.length >= 8 &&
+    password.length <= 128 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password)
+  );
+}
+
 const saveConfig = (id: string, data: unknown) =>
   E()
     .DB.prepare(
@@ -36,6 +105,25 @@ const saveConfig = (id: string, data: unknown) =>
     )
     .bind(id, JSON.stringify(data))
     .run();
+
+async function adminPasswordHash() {
+  const row = await E()
+    .DB.prepare("SELECT data FROM store_config WHERE id='admin_password'")
+    .first<{ data: string }>();
+  if (!row?.data) return "";
+  try {
+    const parsed = JSON.parse(row.data);
+    return typeof parsed?.hash === "string" ? parsed.hash : "";
+  } catch {
+    return "";
+  }
+}
+
+async function verifyAdminPassword(password: string) {
+  const stored = await adminPasswordHash();
+  if (stored) return verifyPassword(password, stored);
+  return { ok: !!E().ADMIN_PASSWORD && password === E().ADMIN_PASSWORD, upgrade: false };
+}
 
 async function ensureCustomerColumns() {
   await ensureStoreSchema();
@@ -200,11 +288,19 @@ export async function POST(req: Request) {
           503,
         );
 
-      if (
-        typeof body.password !== "string" ||
-        body.password !== E().ADMIN_PASSWORD
-      )
+      if (typeof body.password !== "string")
         return json({ error: "Incorrect admin password." }, 401);
+
+      const passwordResult = await verifyAdminPassword(body.password);
+      if (!passwordResult.ok)
+        return json({ error: "Incorrect admin password." }, 401);
+
+      if (passwordResult.upgrade) {
+        await saveConfig("admin_password", {
+          hash: await hashPassword(body.password),
+          updatedAt: new Date().toISOString(),
+        });
+      }
 
       const exp = String(Date.now() + 8 * 60 * 60 * 1000);
       return json(
@@ -234,10 +330,36 @@ export async function POST(req: Request) {
         "deleteCoupon",
         "uploadMedia",
         "updateOrder",
+        "changeAdminPassword",
       ].includes(body.action) &&
       !(await admin(req))
     )
       return json({ error: "Admin sign-in required." }, 401);
+
+    if (body.action === "changeAdminPassword") {
+      const currentPassword =
+        typeof body.currentPassword === "string" ? body.currentPassword : "";
+      const newPassword =
+        typeof body.newPassword === "string" ? body.newPassword : "";
+
+      if (!validPassword(newPassword))
+        return json(
+          { error: "New password must include uppercase, lowercase, number and symbol." },
+          400,
+        );
+      if (currentPassword === newPassword)
+        return json({ error: "New password must be different." }, 400);
+
+      const result = await verifyAdminPassword(currentPassword);
+      if (!result.ok) return json({ error: "Current password is incorrect." }, 401);
+
+      await saveConfig("admin_password", {
+        hash: await hashPassword(newPassword),
+        updatedAt: new Date().toISOString(),
+      });
+
+      return json({ ok: true });
+    }
 
     if (body.action === "uploadMedia") {
       if (
