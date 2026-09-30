@@ -1296,6 +1296,9 @@ html, body {
   max-width: 100%;
   box-sizing: border-box !important;
   box-shadow: -10px 0 60px rgba(0, 0, 0, 0.25) !important;
+  display: none !important;
+}
+.cart-dialog[open] {
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
