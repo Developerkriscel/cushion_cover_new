@@ -134,6 +134,16 @@ export async function GET(req: Request) {
         products: await products(),
         settings: s,
         payment: paymentStatus(s),
+        coupons: (await coupons())
+          .filter((coupon) => coupon.active)
+          .map((coupon) => ({
+            code: coupon.code,
+            type: coupon.type,
+            value: coupon.value,
+            minOrder: coupon.minOrder,
+            expires: coupon.expires,
+            active: coupon.active,
+          })),
         state,
         customer:
           typeof uid === "string" && uid.startsWith("customer:")

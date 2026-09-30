@@ -1,6 +1,6 @@
-import Carousel from './carousel';
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Carousel from './carousel';
 import {
   Tag,
   ArrowUpRight,
@@ -36,13 +36,41 @@ import { openCashfree } from "./cashfree-checkout";
 import LoginForm from "./login-form";
 import RegisterForm from "./register-form";
 import AddressBook, { Address } from "./address-book";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function downloadInvoice(order: any) {
-  const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+  let items: any[] = [];
+  try {
+    const parsed = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+    items = Array.isArray(parsed) ? parsed : [];
+  } catch {}
+  const invoiceRows = items
+    .map((item: any) => {
+      const qty = Number(item.qty || item.quantity || 1);
+      const price = Number(item.price) || 0;
+      return `
+              <tr>
+                <td>${escapeHtml(item.name)}</td>
+                <td style="text-align: center;">${escapeHtml(qty)}</td>
+                <td style="text-align: right;">Rs. ${escapeHtml(price)}</td>
+                <td style="text-align: right; font-weight: 600;">Rs. ${escapeHtml(price * qty)}</td>
+              </tr>
+            `;
+    })
+    .join("");
   const html = `
     <html>
       <head>
         <meta charset="utf-8">
-        <title>Invoice - #${order.id}</title>
+        <title>Invoice - #${escapeHtml(order.id)}</title>
         <style>
           body { font-family: system-ui, sans-serif; padding: 40px; color: #111; max-width: 800px; margin: 0 auto; }
           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 20px; }
@@ -60,26 +88,26 @@ export function downloadInvoice(order: any) {
         <div class="header">
           <div>
             <h1>INVOICE</h1>
-            <p style="color: #64748b; font-size: 14px;">Order #${order.id.slice(0, 8).toUpperCase()}</p>
+            <p style="color: #64748b; font-size: 14px;">Order #${escapeHtml(order.id?.slice(0, 8).toUpperCase())}</p>
           </div>
           <div style="text-align: right">
             <img src="${window.location.origin}/velto-logo.png" alt="VELTO" style="height: 36px; margin-bottom: 5px;" />
-            <p style="color: #64748b; margin: 5px 0 0;">Date: ${new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+            <p style="color: #64748b; margin: 5px 0 0;">Date: ${escapeHtml(new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))}</p>
           </div>
         </div>
         <div class="details">
           <div>
             <strong style="color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Billed To</strong><br/>
-            <span style="font-size: 16px; font-weight: 600;">${order.customer}</span><br/>
-            ${order.address}<br/>
-            Phone: +91 ${order.phone}<br/>
-            PIN: ${order.pincode}
+            <span style="font-size: 16px; font-weight: 600;">${escapeHtml(order.customer)}</span><br/>
+            ${escapeHtml(order.address).replace(/\n/g, "<br/>")}<br/>
+            Phone: +91 ${escapeHtml(order.phone)}<br/>
+            PIN: ${escapeHtml(order.pincode)}
           </div>
           <div style="text-align: right">
             <strong style="color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Payment Method</strong><br/>
             ${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}<br/><br/>
             <strong style="color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Status</strong><br/>
-            <span style="color: #0e7579; font-weight: 600;">${order.status}</span>
+            <span style="color: #0e7579; font-weight: 600;">${escapeHtml(order.status)}</span>
           </div>
         </div>
         <table>
@@ -92,18 +120,11 @@ export function downloadInvoice(order: any) {
             </tr>
           </thead>
           <tbody>
-            ${items.map((item: any) => `
-              <tr>
-                <td>${item.name}</td>
-                <td style="text-align: center;">${item.qty || item.quantity || 1}</td>
-                <td style="text-align: right;">₹${item.price}</td>
-                <td style="text-align: right; font-weight: 600;">₹${item.price * (item.qty || item.quantity || 1)}</td>
-              </tr>
-            `).join('')}
+            ${invoiceRows}
           </tbody>
         </table>
         <div class="total">
-          Grand Total: ₹${order.total}
+          Grand Total: Rs. ${escapeHtml(order.total)}
         </div>
         <div class="footer">
           Thank you for shopping with Velto!<br/>
@@ -190,6 +211,7 @@ export default function Store({
     setProducts(d.products);
     setSettings(d.settings || initialSettings);
     setPayment(d.payment || { mode: "live", ready: false });
+    setCouponsList(Array.isArray(d.coupons) ? d.coupons : []);
     if (d.state) {
       const ids = new Set(d.products.map((p: Product) => p.id));
       setBag(
@@ -203,7 +225,6 @@ export default function Store({
       setCustomer(d.customer);
       setOrders(d.orders || []);
       setAddresses(d.addresses || []);
-      setCouponsList(d.coupons || []);
       if (d.addresses?.length) {
         const def = d.addresses.find((a: any) => a.isDefault) || d.addresses[0];
         if (def) setCheckoutAddress((prev: Address | null) => prev || def);
@@ -1929,8 +1950,10 @@ export default function Store({
                             if (res.ok) {
                               setCustomer(c => c ? { ...c, name: formData.get('name') as string, last_name: formData.get('last_name') as string, phone: formData.get('phone') as string } : c);
                               setEditingProfile(false);
+                              setToast("Profile updated.");
                             } else {
-                              alert('Could not update profile');
+                              const d = await res.json().catch(() => ({}));
+                              setError(d.error || "Could not update profile.");
                             }
                           }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -2043,12 +2066,21 @@ export default function Store({
                                               });
                                               if(!res.ok) {
                                                 const d = await res.json();
-                                                alert(d.error || 'Failed to cancel order');
+                                                setError(d.error || 'Failed to cancel order');
                                               } else {
-                                                window.location.reload();
+                                                setOrders((list) =>
+                                                  list.map((order) =>
+                                                    order.id === o.id
+                                                      ? { ...order, status: "Cancelled" }
+                                                      : order,
+                                                  ),
+                                                );
+                                                setCancelOrderId(null);
+                                                setCancelReason("");
+                                                setToast("Order cancelled.");
                                               }
                                             } catch(e) {
-                                              alert('Could not cancel order');
+                                              setError('Could not cancel order');
                                             }
                                           }} 
                                           style={{ padding: '10px 16px', background: cancelReason ? '#dc2626' : '#fca5a5', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: cancelReason ? 'pointer' : 'not-allowed' }}
@@ -2098,8 +2130,9 @@ export default function Store({
                                    <div style={{ fontSize: '12px', color: '#878787', marginTop: '5px' }}>Valid on orders above ₹{c.minOrder}. {c.expires ? 'Expires on: ' + new Date(c.expires).toLocaleDateString() : 'No expiry date.'}</div>
                                  </div>
                                  <button onClick={() => {
-                                   navigator.clipboard.writeText(c.code);
-                                   alert('Coupon code copied!');
+                                   navigator.clipboard.writeText(c.code)
+                                     .then(() => setToast('Coupon code copied.'))
+                                     .catch(() => setCouponInput(c.code));
                                  }} style={{ background: '#0e7579', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '2px', fontWeight: 600, cursor: 'pointer' }}>COPY CODE</button>
                               </div>
                            ))
